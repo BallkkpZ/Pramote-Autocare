@@ -2,14 +2,25 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useCartStore } from '@/stores/cart-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Mail, ShoppingCart, Package, LogOut, UserCircle } from 'lucide-react';
+import { User, Mail, ShoppingCart, Package, LogOut, UserCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Account() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, isLoading } = useAuthStore();
   const { items } = useCartStore();
 
+  // แสดง Loading ระหว่างที่ระบบกำลังตรวจสอบสถานะจาก AWS
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-20 text-center flex flex-col items-center">
+        <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+        <p className="text-lg font-medium">กำลังโหลดข้อมูลบัญชี...</p>
+      </div>
+    );
+  }
+
+  // หากโหลดเสร็จแล้วแต่ไม่มีข้อมูลผู้ใช้ ค่อยแสดงหน้าให้ไป Login
   if (!isAuthenticated || !user) {
     return (
       <div className="container mx-auto px-4 py-20 text-center">

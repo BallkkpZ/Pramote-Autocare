@@ -22,7 +22,7 @@ type FormData = z.infer<typeof schema>;
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuthStore(); 
+  const { login, initSession } = useAuthStore(); 
   const { items: guestItems } = useCartStore();
 
   const form = useForm<FormData>({
@@ -35,8 +35,13 @@ export default function Login() {
 
   const loginMutation = useMutation({
     mutationFn: ({ email, password }: FormData) => login(email, password),
-    onSuccess: () => {
+    onSuccess: async () => {
+      // ดึงข้อมูล Session ล่าสุดจาก AWS ทันทีเพื่อให้สถานะใน Store เป็นปัจจุบัน
+      await initSession();
+      
       toast.success('เข้าสู่ระบบสำเร็จ');
+      
+      // ตรวจสอบว่ามีหน้าเดิมที่ค้างอยู่ไหม ถ้าไม่มีให้ไปหน้า /account
       const from = (location.state as any)?.from?.pathname || '/account';
       navigate(from, { replace: true });
     },
