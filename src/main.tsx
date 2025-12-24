@@ -6,13 +6,14 @@ import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 
 /**
- * นำเข้า Config จากทั้ง 2 ส่วน เพื่อให้มั่นใจว่าทั้ง
- * ระบบสมาชิก (outputs) และ API (config) ทำงานได้ครบถ้วน
+ * นำเข้าข้อมูลการตั้งค่าจาก Amplify
+ * outputs: สำหรับระบบสมาชิก (Cognito) และ Data (Gen 2)
+ * config: สำหรับระบบ API (REST) ที่เราเพิ่งสร้างเพิ่ม
  */
 import outputs from '../amplify_outputs.json';
 import config from './amplifyconfiguration.json';
 
-// รวมการตั้งค่าทั้งหมดเข้าด้วยกัน
+// รวมการตั้งค่าทั้งหมดเข้าด้วยกันเพื่อให้แอปเรียกใช้งานได้ทุกส่วน
 Amplify.configure({
   ...outputs,
   ...config
