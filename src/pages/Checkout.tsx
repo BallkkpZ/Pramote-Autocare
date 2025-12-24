@@ -19,6 +19,7 @@ import { Address } from '@/types';
 
 // --- นำเข้าเครื่องมือสำหรับเชื่อมต่อ AWS API ---
 import { post } from 'aws-amplify/api';
+import { fetchAuthSession } from 'aws-amplify/auth';
 
 const addressSchema = z.object({
   fullName: z.string().min(1, 'กรุณากรอกชื่อ'),
@@ -39,7 +40,7 @@ export default function Checkout() {
   const form = useForm<Address>({
     resolver: zodResolver(addressSchema),
     defaultValues: {
-      fullName: session?.user.name || '',
+      fullName: session?.user?.name || '',
       phone: '',
       addressLine1: '',
       addressLine2: '',
@@ -49,17 +50,25 @@ export default function Checkout() {
     },
   });
 
-  // --- แก้ไขส่วนการส่งข้อมูลหา AWS Lambda ---
+  // --- ส่วนการส่งข้อมูลหา AWS Lambda ---
   const createOrderMutation = useMutation({
     mutationFn: async (orderData: { shippingAddress: Address; paymentMethod: string }) => {
-      // มัดรวมข้อมูลสินค้าในตะกร้า
+      // 1. เตรียมข้อมูลสินค้าและยอดรวม
       const serviceNames = items.map(item => item.name).join(', ');
       const totalAmount = getTotal();
 
+      // 2. ดึง Auth Token เพื่อยืนยันตัวตน (ถ้า API ตั้งค่าเป็น Private)
+      const { tokens } = await fetchAuthSession();
+      const idToken = tokens?.idToken?.toString();
+
+      // 3. เรียกใช้ API ผ่านท่อ orderApi
       const restOperation = post({
         apiName: 'orderApi',
         path: '/orders',
         options: {
+          headers: {
+            Authorization: idToken || '' 
+          },
           body: {
             serviceName: serviceNames,
             totalPrice: totalAmount,
@@ -69,18 +78,25 @@ export default function Checkout() {
         }
       });
 
-      const { body } = await restOperation.response;
-      return await body.json();
+      // 4. รอรับและตรวจสอบสถานะการตอบกลับ
+      const response = await restOperation.response;
+      
+      if (response.statusCode !== 200) {
+        const errorData = await response.body.json() as any;
+        throw new Error(errorData.message || 'Server error');
+      }
+
+      return await response.body.json() as any;
     },
     onSuccess: (data: any) => {
       clearCart();
       toast.success('สั่งซื้อสำเร็จ!');
-      // นำ Order ID ที่ได้จาก Lambda มาแสดงในหน้า Success
-      navigate(`/order-success?orderNumber=${data.orderId}`);
+      // นำ Order ID จาก Lambda มาแสดงในหน้า Success
+      navigate(`/order-success?orderNumber=${data.orderId || 'SUCCESS'}`);
     },
-    onError: (error) => {
-      toast.error('เกิดข้อผิดพลาดในการสั่งซื้อบน Cloud');
-      console.error(error);
+    onError: (error: any) => {
+      console.error('API Error Details:', error);
+      toast.error('เกิดข้อผิดพลาดในการสั่งซื้อบน Cloud กรุณาลองใหม่');
     },
   });
 
@@ -190,114 +206,3 @@ export default function Checkout() {
                           <FormControl>
                             <Input {...field} className="border-2 border-primary" />
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="province"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>จังหวัด *</FormLabel>
-                          <FormControl>
-                            <Input {...field} className="border-2 border-primary" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="postalCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>รหัสไปรษณีย์ *</FormLabel>
-                        <FormControl>
-                          <Input {...field} className="border-2 border-primary" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-
-              <Card className="border-2 border-primary">
-                <CardHeader>
-                  <CardTitle>วิธีการชำระเงิน</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <div className="flex items-center space-x-2 p-3 border-2 border-primary mb-3">
-                      <RadioGroupItem value="qr" id="qr" />
-                      <Label htmlFor="qr" className="flex-1 cursor-pointer">
-                        QR Payment / โอนเงิน
-                      </Label>
-                    </div>
-
-                    <div className="flex items-center space-x-2 p-3 border-2 border-primary mb-3">
-                      <RadioGroupItem value="credit" id="credit" />
-                      <Label htmlFor="credit" className="flex-1 cursor-pointer">
-                        บัตรเครดิต/เดบิต
-                      </Label>
-                    </div>
-
-                    <div className="flex items-center space-x-2 p-3 border-2 border-primary">
-                      <RadioGroupItem value="cod" id="cod" />
-                      <Label htmlFor="cod" className="flex-1 cursor-pointer">
-                        ชำระเงินปลายทาง (COD)
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div>
-              <Card className="border-2 border-primary sticky top-24">
-                <CardHeader>
-                  <CardTitle>สรุปคำสั่งซื้อ</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 mb-4">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">สินค้า ({items.length})</span>
-                      <span className="font-medium">{formatPrice(subtotal)}</span>
-                    </div>
-
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">ค่าจัดส่ง</span>
-                      <span className="font-medium">
-                        {shippingFee === 0 ? 'ฟรี' : formatPrice(shippingFee)}
-                      </span>
-                    </div>
-
-                    <Separator className="h-0.5 bg-primary" />
-
-                    <div className="flex justify-between text-lg font-bold">
-                      <span>ยอดรวม</span>
-                      <span>{formatPrice(total)}</span>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full border-2 border-primary"
-                    size="lg"
-                    disabled={createOrderMutation.isPending}
-                  >
-                    {createOrderMutation.isPending ? 'กำลังดำเนินการ...' : 'ยืนยันการสั่งซื้อ'}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </form>
-      </Form>
-    </div>
-  );
-}
