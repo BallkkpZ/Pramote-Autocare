@@ -1,13 +1,14 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation } from '@tanstack/react-query';
+import { signUp } from 'aws-amplify/auth'; // นำเข้าฟังก์ชันจาก Amplify
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { register } from '@/api/auth';
 import { useAuthStore } from '@/stores/auth-store';
 import { toast } from 'sonner';
 
@@ -38,15 +39,38 @@ export default function Register() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: ({ name, email, password }: { name: string; email: string; password: string }) =>
-      register(email, password, name),
-    onSuccess: (session) => {
-      setSession(session);
-      toast.success('สมัครสมาชิกสำเร็จ');
-      navigate('/');
+    mutationFn: async ({ name, email, password }: { name: string; email: string; password: string }) => {
+      // เรียกใช้ Amplify SignUp
+      const { isSignUpComplete, userId, nextStep } = await signUp({
+        username: email,
+        password: password,
+        options: {
+          userAttributes: {
+            email: email,
+            name: name, // ส่งชื่อไปบันทึกใน Cognito Attributes
+          },
+          // เลือกส่ง code ไปที่ email อัตโนมัติ
+          autoSignIn: true 
+        }
+      });
+      return { isSignUpComplete, userId, nextStep };
+    },
+    onSuccess: (result) => {
+      toast.success('สมัครสมาชิกสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อยืนยันตน');
+      
+      // หลังจากสมัครสำเร็จ Cognito จะต้องการให้ยืนยันตัวตน (Confirm SignUp)
+      // ในเบื้องต้นผมจะส่งผู้ใช้ไปหน้า Login เพื่อให้ระบบจัดการต่อ
+      navigate('/login'); 
     },
     onError: (error: any) => {
-      toast.error(error.message || 'สมัครสมาชิกล้มเหลว');
+      console.error(error);
+      let message = 'สมัครสมาชิกล้มเหลว';
+      if (error.name === 'UsernameExistsException') {
+        message = 'อีเมลนี้ถูกใช้งานไปแล้ว';
+      } else if (error.name === 'InvalidPasswordException') {
+        message = 'รหัสผ่านไม่ตรงตามเงื่อนไขความปลอดภัย';
+      }
+      toast.error(message);
     },
   });
 
@@ -62,7 +86,7 @@ export default function Register() {
     <div className="container mx-auto px-4 py-12">
       <Card className="border-2 border-primary max-w-md mx-auto">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">สมัครสมาชิก</CardTitle>
+          <CardTitle className="text-2xl text-center">สมัครสมาชิก (Cognito)</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>

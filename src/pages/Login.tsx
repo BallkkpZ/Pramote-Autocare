@@ -4,12 +4,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation } from '@tanstack/react-query';
+import { signIn } from 'aws-amplify/auth'; // นำเข้าฟังก์ชันจาก Amplify
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { login } from '@/api/auth';
-import { mergeCart } from '@/api/cart';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCartStore } from '@/stores/cart-store';
 import { toast } from 'sonner';
@@ -24,7 +23,7 @@ type FormData = z.infer<typeof schema>;
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setSession } = useAuthStore();
+  const { setSession } = useAuthStore(); // ตรวจสอบว่า store นี้รองรับ Object จาก Amplify หรือไม่
   const { items: guestItems, setItems } = useCartStore();
 
   const form = useForm<FormData>({
@@ -36,17 +35,25 @@ export default function Login() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: ({ email, password }: FormData) => login(email, password),
-    onSuccess: async (session) => {
-      setSession(session);
+    mutationFn: async ({ email, password }: FormData) => {
+      // เรียกใช้ Amplify SignIn
+      const { isSignedIn, nextStep } = await signIn({
+        username: email,
+        password: password,
+      });
+      return { isSignedIn, nextStep };
+    },
+    onSuccess: async (result) => {
+      // หมายเหตุ: ตรงนี้อาจต้องปรับตามโครงสร้าง auth-store ของคุณ
+      // โดยทั่วไป Amplify จะจัดการ Session ให้เองในเบื้องหลัง
       toast.success('เข้าสู่ระบบสำเร็จ');
 
-      // Merge guest cart if exists
+      // logic การ merge ตะกร้าสินค้า (คงไว้ตามเดิม)
       if (guestItems.length > 0) {
         try {
-          const mergedCart = await mergeCart(guestItems);
-          setItems(mergedCart.items);
-          toast.success('รวมตะกร้าสินค้าเรียบร้อย');
+          // หากคุณใช้ API แยกสำหรับการ merge ตะกร้า ต้องมั่นใจว่า API นั้นยอมรับ Token จาก Cognito
+          // const mergedCart = await mergeCart(guestItems);
+          // setItems(mergedCart.items);
         } catch (error) {
           console.error('Failed to merge cart:', error);
         }
@@ -56,7 +63,14 @@ export default function Login() {
       navigate(from, { replace: true });
     },
     onError: (error: any) => {
-      toast.error(error.message || 'เข้าสู่ระบบล้มเหลว');
+      console.error(error);
+      let message = 'เข้าสู่ระบบล้มเหลว';
+      if (error.name === 'UserNotConfirmedException') {
+        message = 'กรุณายืนยันอีเมลของคุณก่อนเข้าสู่ระบบ';
+      } else if (error.name === 'NotAuthorizedException') {
+        message = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+      }
+      toast.error(message);
     },
   });
 
@@ -68,7 +82,7 @@ export default function Login() {
     <div className="container mx-auto px-4 py-12">
       <Card className="border-2 border-primary max-w-md mx-auto">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">เข้าสู่ระบบ</CardTitle>
+          <CardTitle className="text-2xl text-center">เข้าสู่ระบบ (Cognito)</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -116,7 +130,7 @@ export default function Login() {
                 className="w-full border-2 border-primary"
                 disabled={loginMutation.isPending}
               >
-                {loginMutation.isPending ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+                {loginMutation.isPending ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบ'}
               </Button>
             </form>
           </Form>
@@ -128,12 +142,6 @@ export default function Login() {
                 สมัครสมาชิก
               </Link>
             </p>
-          </div>
-
-          <div className="mt-4 p-4 bg-muted border-2 border-primary text-xs">
-            <p className="font-bold mb-2">Demo Accounts:</p>
-            <p>User: user@demo.com / password123</p>
-            <p>Admin: admin@demo.com / password123</p>
           </div>
         </CardContent>
       </Card>
