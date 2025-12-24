@@ -9,7 +9,11 @@ import { Footer } from '@/components/layout/Footer';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCartStore } from '@/stores/cart-store';
 
-// --- เพิ่มส่วนนี้เพื่อเตรียมใช้ Database ในอนาคต ---
+// --- นำเข้าเครื่องมือสำหรับเรียกใช้ REST API ---
+import { post } from 'aws-amplify/api';
+// ------------------------------------------
+
+// --- ส่วนเดิมสำหรับ Data Gen 2 (ถ้ามี) ---
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../amplify/data/resource";
 const client = generateClient<Schema>();
@@ -83,7 +87,7 @@ function AppContent() {
       <Footer />
     </div>
   );
-}""
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

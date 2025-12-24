@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "paths": {
+    "/orders": {
+      "name": "/orders",
+      "lambdaFunction": "createOrderFunction",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create"
+        ]
+      }
+    }
+  }
+}

@@ -14,9 +14,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useCartStore } from '@/stores/cart-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatPrice } from '@/lib/format';
-import { createOrder } from '@/api/orders';
 import { toast } from 'sonner';
 import { Address } from '@/types';
+
+// --- นำเข้าเครื่องมือสำหรับเชื่อมต่อ AWS API ---
+import { post } from 'aws-amplify/api';
 
 const addressSchema = z.object({
   fullName: z.string().min(1, 'กรุณากรอกชื่อ'),
@@ -47,15 +49,37 @@ export default function Checkout() {
     },
   });
 
+  // --- แก้ไขส่วนการส่งข้อมูลหา AWS Lambda ---
   const createOrderMutation = useMutation({
-    mutationFn: createOrder,
-    onSuccess: (order) => {
+    mutationFn: async (orderData: { shippingAddress: Address; paymentMethod: string }) => {
+      // มัดรวมข้อมูลสินค้าในตะกร้า
+      const serviceNames = items.map(item => item.name).join(', ');
+      const totalAmount = getTotal();
+
+      const restOperation = post({
+        apiName: 'orderApi',
+        path: '/orders',
+        options: {
+          body: {
+            serviceName: serviceNames,
+            totalPrice: totalAmount,
+            address: orderData.shippingAddress,
+            payment: orderData.paymentMethod
+          }
+        }
+      });
+
+      const { body } = await restOperation.response;
+      return await body.json();
+    },
+    onSuccess: (data: any) => {
       clearCart();
       toast.success('สั่งซื้อสำเร็จ!');
-      navigate(`/order-success?orderNumber=${order.orderNumber}`);
+      // นำ Order ID ที่ได้จาก Lambda มาแสดงในหน้า Success
+      navigate(`/order-success?orderNumber=${data.orderId}`);
     },
     onError: (error) => {
-      toast.error('เกิดข้อผิดพลาดในการสั่งซื้อ');
+      toast.error('เกิดข้อผิดพลาดในการสั่งซื้อบน Cloud');
       console.error(error);
     },
   });
@@ -94,9 +118,7 @@ export default function Checkout() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Left: Forms */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Shipping Address */}
               <Card className="border-2 border-primary">
                 <CardHeader>
                   <CardTitle>ที่อยู่จัดส่ง</CardTitle>
@@ -204,7 +226,6 @@ export default function Checkout() {
                 </CardContent>
               </Card>
 
-              {/* Payment Method */}
               <Card className="border-2 border-primary">
                 <CardHeader>
                   <CardTitle>วิธีการชำระเงิน</CardTitle>
@@ -236,7 +257,6 @@ export default function Checkout() {
               </Card>
             </div>
 
-            {/* Right: Summary */}
             <div>
               <Card className="border-2 border-primary sticky top-24">
                 <CardHeader>

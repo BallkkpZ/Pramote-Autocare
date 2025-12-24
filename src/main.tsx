@@ -6,13 +6,17 @@ import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 
 /**
- * ระหว่างการ Build บน Cloud ไฟล์นี้อาจจะยังไม่มี 
- * เราจึงต้องใช้ try-catch หรือตรวจสอบเงื่อนไขเพื่อไม่ให้ Build พัง
+ * นำเข้า Config จากทั้ง 2 ส่วน เพื่อให้มั่นใจว่าทั้ง
+ * ระบบสมาชิก (outputs) และ API (config) ทำงานได้ครบถ้วน
  */
 import outputs from '../amplify_outputs.json';
+import config from './amplifyconfiguration.json';
 
-// ตั้งค่า Amplify โดยใช้ค่าจาก outputs ทั้งหมด (รวมทั้ง Cognito และ Database)
-Amplify.configure(outputs);
+// รวมการตั้งค่าทั้งหมดเข้าด้วยกัน
+Amplify.configure({
+  ...outputs,
+  ...config
+});
 
 const container = document.getElementById("root");
 if (container) {
