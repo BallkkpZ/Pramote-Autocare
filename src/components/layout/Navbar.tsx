@@ -8,16 +8,17 @@ import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCartStore } from '@/stores/cart-store';
 import { useState } from 'react';
+
 export function Navbar() {
   const navigate = useNavigate();
-  const {
-    session,
-    logout
-  } = useAuthStore();
+  // แก้ไขจุดนี้: ดึง user และ isAuthenticated แทน session
+  const { user, isAuthenticated, logout } = useAuthStore();
   const items = useCartStore(state => state.items);
   const [search, setSearch] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (search.trim()) {
@@ -25,19 +26,20 @@ export function Navbar() {
       setSearch('');
     }
   };
+
   const handleLogout = () => {
     logout();
     navigate('/');
   };
-  return <header className="border-b-2 border-primary bg-background sticky top-0 z-50">
+
+  return (
+    <header className="border-b-2 border-primary bg-background sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 gap-4">
-          {/* Logo */}
           <Link to="/" className="font-bold text-xl md:text-2xl hover:opacity-80">
             Pramote AutoCare 
           </Link>
 
-          {/* Desktop Search */}
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md">
             <div className="relative w-full">
               <Input type="search" placeholder="ค้นหาสินค้า..." value={search} onChange={e => setSearch(e.target.value)} className="pr-10 border-2 border-primary" />
@@ -47,10 +49,10 @@ export function Navbar() {
             </div>
           </form>
 
-          {/* Right Actions */}
           <div className="flex items-center gap-2">
-            {/* Account Dropdown */}
-            {session ? <DropdownMenu>
+            {/* เปลี่ยนเงื่อนไขจาก session เป็น isAuthenticated */}
+            {isAuthenticated && user ? (
+              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon" className="border-2 border-primary">
                     <User className="h-5 w-5" />
@@ -58,7 +60,7 @@ export function Navbar() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="border-2 border-primary">
                   <div className="px-2 py-1.5 text-sm font-medium">
-                    {session.user.name}
+                    {user.name}
                   </div>
                   <DropdownMenuSeparator className="bg-primary h-0.5" />
                   <DropdownMenuItem onClick={() => navigate('/account')}>
@@ -67,30 +69,35 @@ export function Navbar() {
                   <DropdownMenuItem onClick={() => navigate('/account/orders')}>
                     คำสั่งซื้อ
                   </DropdownMenuItem>
-                  {session.user.role === 'ADMIN' && <>
+                  {user.role === 'ADMIN' && (
+                    <>
                       <DropdownMenuSeparator className="bg-primary h-0.5" />
                       <DropdownMenuItem onClick={() => navigate('/admin')}>
                         Admin Panel
                       </DropdownMenuItem>
-                    </>}
+                    </>
+                  )}
                   <DropdownMenuSeparator className="bg-primary h-0.5" />
                   <DropdownMenuItem onClick={handleLogout}>
                     ออกจากระบบ
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu> : <Button variant="outline" size="icon" onClick={() => navigate('/login')} className="border-2 border-primary">
+              </DropdownMenu>
+            ) : (
+              <Button variant="outline" size="icon" onClick={() => navigate('/login')} className="border-2 border-primary">
                 <User className="h-5 w-5" />
-              </Button>}
+              </Button>
+            )}
 
-            {/* Cart Button */}
             <Button variant="outline" size="icon" onClick={() => navigate('/cart')} className="relative border-2 border-primary">
               <ShoppingCart className="h-5 w-5" />
-              {cartCount > 0 && <Badge variant="default" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
+              {cartCount > 0 && (
+                <Badge variant="default" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
                   {cartCount}
-                </Badge>}
+                </Badge>
+              )}
             </Button>
 
-            {/* Mobile Menu */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild className="md:hidden">
                 <Button variant="outline" size="icon" className="border-2 border-primary">
@@ -117,7 +124,6 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6 py-2 border-t-2 border-primary">
           <Link to="/products" className="font-medium hover:underline">
             สินค้าทั้งหมด
@@ -130,5 +136,6 @@ export function Navbar() {
           </Link>
         </nav>
       </div>
-    </header>;
+    </header>
+  );
 }
