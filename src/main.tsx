@@ -20,7 +20,7 @@ Amplify.configure({
       allowGuestAccess: true
     }
   }
-});
+})
 
 const container = document.getElementById("root");
 if (container) {
