@@ -9,6 +9,12 @@ import { Footer } from '@/components/layout/Footer';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCartStore } from '@/stores/cart-store';
 
+// --- เพิ่มส่วนนี้เพื่อเตรียมใช้ Database ในอนาคต ---
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "../amplify/data/resource";
+const client = generateClient<Schema>();
+// ------------------------------------------
+
 // Pages
 import Home from './pages/Home';
 import Products from './pages/Products';
@@ -77,7 +83,7 @@ function AppContent() {
       <Footer />
     </div>
   );
-}
+}""
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
