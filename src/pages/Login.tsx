@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation } from '@tanstack/react-query';
-import { signIn } from 'aws-amplify/auth'; // นำเข้าฟังก์ชันจาก Amplify
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,8 +22,8 @@ type FormData = z.infer<typeof schema>;
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setSession } = useAuthStore(); // ตรวจสอบว่า store นี้รองรับ Object จาก Amplify หรือไม่
-  const { items: guestItems, setItems } = useCartStore();
+  const { login } = useAuthStore(); 
+  const { items: guestItems } = useCartStore();
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -35,35 +34,13 @@ export default function Login() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async ({ email, password }: FormData) => {
-      // เรียกใช้ Amplify SignIn
-      const { isSignedIn, nextStep } = await signIn({
-        username: email,
-        password: password,
-      });
-      return { isSignedIn, nextStep };
-    },
-    onSuccess: async (result) => {
-      // หมายเหตุ: ตรงนี้อาจต้องปรับตามโครงสร้าง auth-store ของคุณ
-      // โดยทั่วไป Amplify จะจัดการ Session ให้เองในเบื้องหลัง
+    mutationFn: ({ email, password }: FormData) => login(email, password),
+    onSuccess: () => {
       toast.success('เข้าสู่ระบบสำเร็จ');
-
-      // logic การ merge ตะกร้าสินค้า (คงไว้ตามเดิม)
-      if (guestItems.length > 0) {
-        try {
-          // หากคุณใช้ API แยกสำหรับการ merge ตะกร้า ต้องมั่นใจว่า API นั้นยอมรับ Token จาก Cognito
-          // const mergedCart = await mergeCart(guestItems);
-          // setItems(mergedCart.items);
-        } catch (error) {
-          console.error('Failed to merge cart:', error);
-        }
-      }
-
-      const from = (location.state as any)?.from?.pathname || '/';
+      const from = (location.state as any)?.from?.pathname || '/account';
       navigate(from, { replace: true });
     },
     onError: (error: any) => {
-      console.error(error);
       let message = 'เข้าสู่ระบบล้มเหลว';
       if (error.name === 'UserNotConfirmedException') {
         message = 'กรุณายืนยันอีเมลของคุณก่อนเข้าสู่ระบบ';
@@ -94,18 +71,12 @@ export default function Login() {
                   <FormItem>
                     <FormLabel>อีเมล</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        type="email"
-                        placeholder="your@email.com"
-                        className="border-2 border-primary"
-                      />
+                      <Input {...field} type="email" placeholder="your@email.com" className="border-2 border-primary" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="password"
@@ -113,34 +84,20 @@ export default function Login() {
                   <FormItem>
                     <FormLabel>รหัสผ่าน</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        type="password"
-                        placeholder="••••••"
-                        className="border-2 border-primary"
-                      />
+                      <Input {...field} type="password" placeholder="••••••" className="border-2 border-primary" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              <Button
-                type="submit"
-                className="w-full border-2 border-primary"
-                disabled={loginMutation.isPending}
-              >
+              <Button type="submit" className="w-full border-2 border-primary" disabled={loginMutation.isPending}>
                 {loginMutation.isPending ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบ'}
               </Button>
             </form>
           </Form>
-
           <div className="mt-6 text-center text-sm">
             <p className="text-muted-foreground">
-              ยังไม่มีบัญชี?{' '}
-              <Link to="/register" className="font-medium underline">
-                สมัครสมาชิก
-              </Link>
+              ยังไม่มีบัญชี? <Link to="/register" className="font-medium underline">สมัครสมาชิก</Link>
             </p>
           </div>
         </CardContent>
