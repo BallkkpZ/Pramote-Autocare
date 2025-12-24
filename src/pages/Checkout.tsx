@@ -50,18 +50,14 @@ export default function Checkout() {
     },
   });
 
-  // --- ส่วนการส่งข้อมูลหา AWS Lambda ---
   const createOrderMutation = useMutation({
     mutationFn: async (orderData: { shippingAddress: Address; paymentMethod: string }) => {
-      // 1. เตรียมข้อมูลสินค้าและยอดรวม
       const serviceNames = items.map(item => item.name).join(', ');
       const totalAmount = getTotal();
 
-      // 2. ดึง Auth Token เพื่อยืนยันตัวตน (ถ้า API ตั้งค่าเป็น Private)
       const { tokens } = await fetchAuthSession();
       const idToken = tokens?.idToken?.toString();
 
-      // 3. เรียกใช้ API ผ่านท่อ orderApi
       const restOperation = post({
         apiName: 'orderApi',
         path: '/orders',
@@ -78,34 +74,25 @@ export default function Checkout() {
         }
       });
 
-      // 4. รอรับและตรวจสอบสถานะการตอบกลับ
       const response = await restOperation.response;
-      
       if (response.statusCode !== 200) {
-        const errorData = await response.body.json() as any;
-        throw new Error(errorData.message || 'Server error');
+        throw new Error('Server error');
       }
-
-      return await response.body.json() as any;
+      return await response.body.json();
     },
     onSuccess: (data: any) => {
       clearCart();
       toast.success('สั่งซื้อสำเร็จ!');
-      // นำ Order ID จาก Lambda มาแสดงในหน้า Success
       navigate(`/order-success?orderNumber=${data.orderId || 'SUCCESS'}`);
     },
     onError: (error: any) => {
-      console.error('API Error Details:', error);
-      toast.error('เกิดข้อผิดพลาดในการสั่งซื้อบน Cloud กรุณาลองใหม่');
+      console.error('API Error:', error);
+      toast.error('เกิดข้อผิดพลาดในการสั่งซื้อบน Cloud');
     },
   });
 
   const onSubmit = (data: Address) => {
-    if (items.length === 0) {
-      toast.error('ไม่มีสินค้าในตะกร้า');
-      return;
-    }
-
+    if (items.length === 0) return;
     createOrderMutation.mutate({
       shippingAddress: data,
       paymentMethod,
@@ -116,93 +103,97 @@ export default function Checkout() {
     return (
       <div className="container mx-auto px-4 py-12 text-center">
         <h1 className="text-2xl font-bold mb-4">ไม่มีสินค้าในตะกร้า</h1>
-        <Button onClick={() => navigate('/products')} className="border-2 border-primary">
-          เลือกซื้อสินค้า
-        </Button>
+        <Button onClick={() => navigate('/products')} className="border-2 border-primary">เลือกซื้อสินค้า</Button>
       </div>
     );
   }
 
-  const subtotal = getSubtotal();
-  const shippingFee = getShippingFee();
-  const total = getTotal();
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">ชำระเงิน</h1>
-
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
               <Card className="border-2 border-primary">
-                <CardHeader>
-                  <CardTitle>ที่อยู่จัดส่ง</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle>ที่อยู่จัดส่ง</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="fullName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ชื่อ-นามสกุล *</FormLabel>
-                        <FormControl>
-                          <Input {...field} className="border-2 border-primary" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>เบอร์โทรศัพท์ *</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="tel" className="border-2 border-primary" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="addressLine1"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ที่อยู่ *</FormLabel>
-                        <FormControl>
-                          <Input {...field} className="border-2 border-primary" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="addressLine2"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ที่อยู่ (บรรทัด 2)</FormLabel>
-                        <FormControl>
-                          <Input {...field} className="border-2 border-primary" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
+                  <FormField control={form.control} name="fullName" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ชื่อ-นามสกุล *</FormLabel>
+                      <FormControl><Input {...field} className="border-2 border-primary" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="phone" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>เบอร์โทรศัพท์ *</FormLabel>
+                      <FormControl><Input {...field} type="tel" className="border-2 border-primary" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="addressLine1" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ที่อยู่ *</FormLabel>
+                      <FormControl><Input {...field} className="border-2 border-primary" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                   <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="district"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>เขต/อำเภอ *</FormLabel>
-                          <FormControl>
-                            <Input {...field} className="border-2 border-primary" />
-                          </FormControl>
+                    <FormField control={form.control} name="district" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>เขต/อำเภอ *</FormLabel>
+                        <FormControl><Input {...field} className="border-2 border-primary" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="province" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>จังหวัด *</FormLabel>
+                        <FormControl><Input {...field} className="border-2 border-primary" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+                  <FormField control={form.control} name="postalCode" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>รหัสไปรษณีย์ *</FormLabel>
+                      <FormControl><Input {...field} className="border-2 border-primary" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-primary">
+                <CardHeader><CardTitle>วิธีการชำระเงิน</CardTitle></CardHeader>
+                <CardContent>
+                  <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <div className="flex items-center space-x-2 p-3 border-2 border-primary mb-3">
+                      <RadioGroupItem value="qr" id="qr" /><Label htmlFor="qr" className="flex-1 cursor-pointer">QR Payment</Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border-2 border-primary">
+                      <RadioGroupItem value="cod" id="cod" /><Label htmlFor="cod" className="flex-1 cursor-pointer">เก็บเงินปลายทาง</Label>
+                    </div>
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="lg:col-span-1">
+              <Card className="border-2 border-primary sticky top-24">
+                <CardHeader><CardTitle>สรุปคำสั่งซื้อ</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between"><span>ยอดรวม</span><span>{formatPrice(getTotal())}</span></div>
+                  <Button type="submit" className="w-full" disabled={createOrderMutation.isPending}>
+                    {createOrderMutation.isPending ? 'กำลังสั่งซื้อ...' : 'ยืนยันการสั่งซื้อ'}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}
