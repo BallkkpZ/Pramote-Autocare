@@ -1,28 +1,26 @@
 const AWS = require('aws-sdk');
-const dynamo = new AWS.DynamoDB.DocumentClient();
+// ระบุภูมิภาคให้ตรงกับตาราง Orders ของคุณ (Singapore)
+const dynamo = new AWS.DynamoDB.DocumentClient({ region: 'ap-southeast-1' });
 
 exports.handler = async (event) => {
     console.log("Received event:", JSON.stringify(event, null, 2));
     
     try {
-        // 1. แกะข้อมูลแบบปลอดภัย (รองรับทั้ง body ที่เป็น string และ object)
         const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
         
-        // 2. ดึง Email แบบปลอดภัย (ถ้าไม่มี Claims จะไม่พัง)
         let email = 'guest';
         if (event.requestContext && event.requestContext.authorizer && event.requestContext.authorizer.claims) {
             email = event.requestContext.authorizer.claims.email || 'guest';
         }
 
-        // 3. เตรียมข้อมูลออเดอร์
         const orderData = {
-            orderId: Date.now().toString(), // ใช้ orderId ตามโครงสร้างมาตรฐาน
+            id: Date.now().toString() + "-" + Math.random().toString(36).substr(2, 4), 
             customerEmail: email,
             serviceName: body.serviceName || 'General Service',
             totalPrice: body.totalPrice || 0,
             status: 'PENDING',
             createdAt: new Date().toISOString(),
-            address: body.address || {} // เก็บข้อมูลที่อยู่จากหน้า Checkout มาด้วย
+            address: body.address || {}
         };
 
         const params = {
@@ -30,7 +28,7 @@ exports.handler = async (event) => {
             Item: orderData
         };
 
-        // 4. บันทึกลงฐานข้อมูล
+        // ทำการบันทึกข้อมูล
         await dynamo.put(params).promise();
 
         return {
@@ -41,11 +39,12 @@ exports.handler = async (event) => {
             },
             body: JSON.stringify({ 
                 message: "สร้างคำสั่งซื้อสำเร็จ!", 
-                orderId: orderData.orderId 
+                orderId: orderData.id 
             }),
         };
     } catch (err) {
-        console.error("Error Detail:", err);
+        // ส่งรายละเอียดข้อผิดพลาดกลับไปยังหน้าบ้านเพื่อการตรวจสอบที่แม่นยำ
+        console.error("Critical DynamoDB Error:", err);
         return {
             statusCode: 500,
             headers: {
@@ -54,7 +53,9 @@ exports.handler = async (event) => {
             },
             body: JSON.stringify({ 
                 error: "Cloud Error", 
-                details: err.message 
+                message: err.message,
+                code: err.code,
+                awsRequestId: event.requestContext?.requestId
             }),
         };
     }

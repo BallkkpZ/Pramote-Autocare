@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Separator } from '@/components/ui/separator';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useCartStore } from '@/stores/cart-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -34,7 +33,7 @@ const addressSchema = z.object({
 export default function Checkout() {
   const navigate = useNavigate();
   const { session } = useAuthStore();
-  const { items, getSubtotal, getShippingFee, getTotal, clearCart } = useCartStore();
+  const { items, getTotal, clearCart } = useCartStore();
   const [paymentMethod, setPaymentMethod] = useState('qr');
 
   const form = useForm<Address>({
@@ -55,9 +54,11 @@ export default function Checkout() {
       const serviceNames = items.map(item => item.name).join(', ');
       const totalAmount = getTotal();
 
+      // ดึง Token ล่าสุด
       const { tokens } = await fetchAuthSession();
       const idToken = tokens?.idToken?.toString();
 
+      // เรียก API โดยระบุชื่อ ApiName ให้ตรงกับที่ตั้งไว้ (ปกติคือ orderApi)
       const restOperation = post({
         apiName: 'orderApi',
         path: '/orders',
@@ -75,9 +76,13 @@ export default function Checkout() {
       });
 
       const response = await restOperation.response;
+      
+      // ตรวจสอบสถานะการตอบกลับแบบละเอียด
       if (response.statusCode !== 200) {
-        throw new Error('Server error');
+        const errorJson = await response.body.json() as any;
+        throw new Error(errorJson.details || errorJson.error || 'Cloud Error');
       }
+      
       return await response.body.json();
     },
     onSuccess: (data: any) => {
@@ -86,8 +91,9 @@ export default function Checkout() {
       navigate(`/order-success?orderNumber=${data.orderId || 'SUCCESS'}`);
     },
     onError: (error: any) => {
-      console.error('API Error:', error);
-      toast.error('เกิดข้อผิดพลาดในการสั่งซื้อบน Cloud');
+      console.error('API Error Details:', error);
+      // แสดงข้อความ Error จริงจากระบบ Cloud เพื่อให้รู้ว่าติดขัดที่ส่วนไหน
+      toast.error(`ข้อผิดพลาด: ${error.message}`);
     },
   });
 

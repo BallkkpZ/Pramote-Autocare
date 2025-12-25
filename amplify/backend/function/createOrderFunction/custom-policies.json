@@ -4,8 +4,7 @@
       "dynamodb:PutItem",
       "dynamodb:GetItem",
       "dynamodb:UpdateItem",
-      "dynamodb:Query",
-      "dynamodb:Scan"
+      "dynamodb:DescribeTable"
     ],
     "Resource": [
       "arn:aws:dynamodb:ap-southeast-1:361335793499:table/Orders"
