@@ -15,8 +15,6 @@ import { useAuthStore } from '@/stores/auth-store';
 import { formatPrice } from '@/lib/format';
 import { toast } from 'sonner';
 import { Address } from '@/types';
-
-// --- นำเข้าเครื่องมือสำหรับเชื่อมต่อ AWS API ---
 import { post } from 'aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
@@ -53,19 +51,14 @@ export default function Checkout() {
     mutationFn: async (orderData: { shippingAddress: Address; paymentMethod: string }) => {
       const serviceNames = items.map(item => item.name).join(', ');
       const totalAmount = getTotal();
-
-      // 1. ดึง Auth Token ล่าสุด
       const { tokens } = await fetchAuthSession();
-      const idToken = tokens?.idToken?.toString();
+      const accessToken = tokens?.accessToken?.toString();
 
-      // 2. เรียก API โดยใช้ชื่อ 'orderApi' ตามที่ปรากฏใน amplifyconfiguration.json
       const restOperation = post({
         apiName: 'orderApi',
         path: '/orders',
         options: {
-          headers: {
-            Authorization: idToken || '' 
-          },
+          headers: { Authorization: accessToken || '' },
           body: {
             serviceName: serviceNames,
             totalPrice: totalAmount,
@@ -75,43 +68,24 @@ export default function Checkout() {
         }
       });
 
-      // 3. จัดการการตอบกลับ
       const { body } = await restOperation.response;
-      const responseText = await body.text();
-      
-      try {
-        return JSON.parse(responseText);
-      } catch (e) {
-        // หาก Response ไม่ใช่ JSON ให้ส่งกลับเป็น Text หรือจำลอง Object
-        return { orderId: 'SUCCESS', message: responseText };
-      }
+      return await body.json();
     },
     onSuccess: (data: any) => {
       clearCart();
       toast.success('สั่งซื้อสำเร็จ!');
-      // นำ Order ID ที่ได้มาแสดง (หรือใช้ค่า SUCCESS หากไม่มีส่งกลับมา)
       const orderNum = data.orderId || data.id || 'SUCCESS';
       navigate(`/order-success?orderNumber=${orderNum}`);
     },
     onError: (error: any) => {
-      console.error('API Error Full Details:', error);
-      
-      // ตรวจสอบข้อความ Error เพื่อให้คำแนะนำที่ถูกต้อง
-      let errorMessage = error.message || 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้';
-      if (errorMessage.includes('apiName')) {
-        errorMessage = "ระบบหา API ไม่เจอ กรุณาตรวจสอบการตั้งค่าใน main.tsx";
-      }
-      
-      toast.error(`ข้อผิดพลาด: ${errorMessage}`);
+      console.error('API Error:', error);
+      toast.error(`ข้อผิดพลาด: ${error.message || 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้'}`);
     },
   });
 
   const onSubmit = (data: Address) => {
     if (items.length === 0) return;
-    createOrderMutation.mutate({
-      shippingAddress: data,
-      paymentMethod,
-    });
+    createOrderMutation.mutate({ shippingAddress: data, paymentMethod });
   };
 
   if (items.length === 0) {
@@ -134,52 +108,27 @@ export default function Checkout() {
                 <CardHeader><CardTitle>ที่อยู่จัดส่ง</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <FormField control={form.control} name="fullName" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ชื่อ-นามสกุล *</FormLabel>
-                      <FormControl><Input {...field} className="border-2 border-primary" /></FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    <FormItem><FormLabel>ชื่อ-นามสกุล *</FormLabel><FormControl><Input {...field} className="border-2 border-primary" /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="phone" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>เบอร์โทรศัพท์ *</FormLabel>
-                      <FormControl><Input {...field} type="tel" className="border-2 border-primary" /></FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    <FormItem><FormLabel>เบอร์โทรศัพท์ *</FormLabel><FormControl><Input {...field} type="tel" className="border-2 border-primary" /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="addressLine1" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ที่อยู่ *</FormLabel>
-                      <FormControl><Input {...field} className="border-2 border-primary" /></FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    <FormItem><FormLabel>ที่อยู่ *</FormLabel><FormControl><Input {...field} className="border-2 border-primary" /></FormControl><FormMessage /></FormItem>
                   )} />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="district" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>เขต/อำเภอ *</FormLabel>
-                        <FormControl><Input {...field} className="border-2 border-primary" /></FormControl>
-                        <FormMessage />
-                      </FormItem>
+                      <FormItem><FormLabel>เขต/อำเภอ *</FormLabel><FormControl><Input {...field} className="border-2 border-primary" /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="province" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>จังหวัด *</FormLabel>
-                        <FormControl><Input {...field} className="border-2 border-primary" /></FormControl>
-                        <FormMessage />
-                      </FormItem>
+                      <FormItem><FormLabel>จังหวัด *</FormLabel><FormControl><Input {...field} className="border-2 border-primary" /></FormControl><FormMessage /></FormItem>
                     )} />
                   </div>
                   <FormField control={form.control} name="postalCode" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>รหัสไปรษณีย์ *</FormLabel>
-                      <FormControl><Input {...field} className="border-2 border-primary" /></FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    <FormItem><FormLabel>รหัสไปรษณีย์ *</FormLabel><FormControl><Input {...field} className="border-2 border-primary" /></FormControl><FormMessage /></FormItem>
                   )} />
                 </CardContent>
               </Card>
-
               <Card className="border-2 border-primary">
                 <CardHeader><CardTitle>วิธีการชำระเงิน</CardTitle></CardHeader>
                 <CardContent>
@@ -194,20 +143,14 @@ export default function Checkout() {
                 </CardContent>
               </Card>
             </div>
-
             <div className="lg:col-span-1">
               <Card className="border-2 border-primary sticky top-24">
                 <CardHeader><CardTitle>สรุปคำสั่งซื้อ</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex justify-between font-bold text-lg">
-                    <span>ยอดรวมสุทธิ</span>
-                    <span>{formatPrice(getTotal())}</span>
+                    <span>ยอดรวมสุทธิ</span><span>{formatPrice(getTotal())}</span>
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full text-lg h-12" 
-                    disabled={createOrderMutation.isPending}
-                  >
+                  <Button type="submit" className="w-full text-lg h-12" disabled={createOrderMutation.isPending}>
                     {createOrderMutation.isPending ? 'กำลังสั่งซื้อ...' : 'ยืนยันการสั่งซื้อ'}
                   </Button>
                 </CardContent>
