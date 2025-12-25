@@ -26,7 +26,7 @@ const amplifyConfig = {
       orderApi: {
         endpoint: "https://82el04rnoi.execute-api.ap-southeast-1.amazonaws.com/dev",
         region: "ap-southeast-1",
-        paths: ['/orders']
+        paths: ['/orders', '/orders/*', '/track-order']
       }
     }
   }
