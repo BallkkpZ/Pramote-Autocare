@@ -13,17 +13,21 @@ import '@aws-amplify/ui-react/styles.css';
 import outputs from '../amplify_outputs.json';
 import config from './amplifyconfiguration.json';
 
-// การ Merge Config: 
-// เราใช้ Auth จาก Gen 2 (outputs) เป็นหลัก 
-// และนำ REST API จาก Gen 1 (config) มาฉีดเข้าไปในระบบ
+// รวมการตั้งค่าเพื่อให้รองรับทั้ง Gen 1 และ Gen 2
 Amplify.configure({
   ...outputs,
   API: {
-    ...outputs.data, // รักษาค่า AppSync เดิม (ถ้ามี)
+    ...outputs.data,
     REST: {
+      // ดึงค่าจาก config.aws_cloud_logic_custom มาลงทะเบียน
       ...(config.aws_cloud_logic_custom || []).reduce((acc, api) => ({
         ...acc,
         [api.name]: {
+          endpoint: api.endpoint,
+          region: api.region
+        },
+        // เพิ่มชื่อมาตรฐาน 'api' เผื่อไว้ในระบบ Gen 2
+        api: {
           endpoint: api.endpoint,
           region: api.region
         }
