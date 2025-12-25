@@ -7,19 +7,21 @@ import '@aws-amplify/ui-react/styles.css';
 
 /**
  * นำเข้าข้อมูลการตั้งค่าจาก Amplify
- * outputs: สำหรับระบบสมาชิก (Cognito) และ Data (Gen 2)
- * config: สำหรับระบบ API (REST) ที่เราเพิ่งสร้างเพิ่ม
+ * outputs: มาจาก Amplify Gen 2 (จัดการ Auth และ AppSync Data)
+ * config: มาจาก Amplify Gen 1 (จัดการ REST API / orders)
  */
 import outputs from '../amplify_outputs.json';
 import config from './amplifyconfiguration.json';
 
-// รวมการตั้งค่าทั้งหมดเข้าด้วยกัน
-// เราใช้การกระจายค่า (Spread) และระบุโครงสร้าง API REST ให้ชัดเจนตามมาตรฐาน Amplify Library
+// การ Merge Config: 
+// เราใช้ Auth จาก Gen 2 (outputs) เป็นหลัก 
+// และนำ REST API จาก Gen 1 (config) มาฉีดเข้าไปในระบบ
 Amplify.configure({
   ...outputs,
   API: {
+    ...outputs.data, // รักษาค่า AppSync เดิม (ถ้ามี)
     REST: {
-      ...config.aws_cloud_logic_custom.reduce((acc, api) => ({
+      ...(config.aws_cloud_logic_custom || []).reduce((acc, api) => ({
         ...acc,
         [api.name]: {
           endpoint: api.endpoint,
