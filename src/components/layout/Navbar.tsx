@@ -37,7 +37,7 @@ export function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 gap-4">
           <Link to="/" className="font-bold text-xl md:text-2xl hover:opacity-80">
-            Pramote AutoCare 
+            Kai Mai Care...Thanut Care 
           </Link>
 
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md">
