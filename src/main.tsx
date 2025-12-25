@@ -7,17 +7,20 @@ import '@aws-amplify/ui-react/styles.css';
 
 import outputs from '../amplify_outputs.json';
 
-Amplify.configure({
+const amplifyConfig = {
   ...outputs,
   API: {
     REST: {
       orderApi: {
         endpoint: "https://82el04rnoi.execute-api.ap-southeast-1.amazonaws.com/dev",
-        region: "ap-southeast-1"
+        region: "ap-southeast-1",
+        paths: ['/orders']
       }
     }
   }
-});
+};
+
+Amplify.configure(amplifyConfig);
 
 const container = document.getElementById("root");
 if (container) {
