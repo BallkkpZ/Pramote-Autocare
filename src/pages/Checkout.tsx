@@ -51,14 +51,13 @@ export default function Checkout() {
     mutationFn: async (orderData: { shippingAddress: Address; paymentMethod: string }) => {
       const serviceNames = items.map(item => item.name).join(', ');
       const totalAmount = getTotal();
-      const { tokens } = await fetchAuthSession();
-      const accessToken = tokens?.accessToken?.toString();
+      await fetchAuthSession(); // Ensure session is valid, though built-in signing handles it.
+
 
       const restOperation = post({
         apiName: 'orderApi',
         path: '/orders',
         options: {
-          headers: { Authorization: accessToken || '' },
           body: {
             serviceName: serviceNames,
             totalPrice: totalAmount,
