@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation } from '@tanstack/react-query';
-import { signUp } from 'aws-amplify/auth'; // นำเข้าฟังก์ชันจาก Amplify
+import { signUp } from 'aws-amplify/auth'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 const schema = z.object({
   name: z.string().min(1, 'กรุณากรอกชื่อ'),
   email: z.string().email('กรุณากรอกอีเมลที่ถูกต้อง'),
-  password: z.string().min(6, 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'),
+  password: z.string().min(8, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'), // แนะนำให้เป็น 8 ตาม Config ของคุณ
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'รหัสผ่านไม่ตรงกัน',
@@ -40,27 +40,25 @@ export default function Register() {
 
   const registerMutation = useMutation({
     mutationFn: async ({ name, email, password }: { name: string; email: string; password: string }) => {
-      // เรียกใช้ Amplify SignUp
       const { isSignUpComplete, userId, nextStep } = await signUp({
         username: email,
         password: password,
         options: {
           userAttributes: {
             email: email,
-            name: name, // ส่งชื่อไปบันทึกใน Cognito Attributes
+            name: name, 
           },
-          // เลือกส่ง code ไปที่ email อัตโนมัติ
           autoSignIn: true 
         }
       });
       return { isSignUpComplete, userId, nextStep };
     },
     onSuccess: (result) => {
-      toast.success('สมัครสมาชิกสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อยืนยันตน');
+      toast.success('สมัครสมาชิกสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อรับรหัสยืนยัน 6 หลัก');
       
-      // หลังจากสมัครสำเร็จ Cognito จะต้องการให้ยืนยันตัวตน (Confirm SignUp)
-      // ในเบื้องต้นผมจะส่งผู้ใช้ไปหน้า Login เพื่อให้ระบบจัดการต่อ
-      navigate('/login'); 
+      // แก้ไขจาก /login เป็น /confirm-registration
+      // เพื่อให้ผู้ใช้สามารถกรอกรหัส 014888 ที่ได้รับทางอีเมลได้ทันที
+      navigate('/confirm-registration'); 
     },
     onError: (error: any) => {
       console.error(error);
@@ -68,7 +66,9 @@ export default function Register() {
       if (error.name === 'UsernameExistsException') {
         message = 'อีเมลนี้ถูกใช้งานไปแล้ว';
       } else if (error.name === 'InvalidPasswordException') {
-        message = 'รหัสผ่านไม่ตรงตามเงื่อนไขความปลอดภัย';
+        message = 'รหัสผ่านไม่ตรงตามเงื่อนไขความปลอดภัย (ต้องมีพิมพ์ใหญ่ พิมพ์เล็ก ตัวเลข และสัญลักษณ์)';
+      } else {
+        message = error.message || message;
       }
       toast.error(message);
     },
@@ -138,7 +138,7 @@ export default function Register() {
                       <Input
                         {...field}
                         type="password"
-                        placeholder="••••••"
+                        placeholder="••••••••"
                         className="border-2 border-primary"
                       />
                     </FormControl>
@@ -152,40 +152,4 @@ export default function Register() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>ยืนยันรหัสผ่าน</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="password"
-                        placeholder="••••••"
-                        className="border-2 border-primary"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <Button
-                type="submit"
-                className="w-full border-2 border-primary"
-                disabled={registerMutation.isPending}
-              >
-                {registerMutation.isPending ? 'กำลังสมัคร...' : 'สมัครสมาชิก'}
-              </Button>
-            </form>
-          </Form>
-
-          <div className="mt-6 text-center text-sm">
-            <p className="text-muted-foreground">
-              มีบัญชีแล้ว?{' '}
-              <Link to="/login" className="font-medium underline">
-                เข้าสู่ระบบ
-              </Link>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+                    <FormLabel>ยืนยันรหัสผ่าน
