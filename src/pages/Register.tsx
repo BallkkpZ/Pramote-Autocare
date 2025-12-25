@@ -9,13 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useAuthStore } from '@/stores/auth-store';
 import { toast } from 'sonner';
 
 const schema = z.object({
   name: z.string().min(1, 'กรุณากรอกชื่อ'),
   email: z.string().email('กรุณากรอกอีเมลที่ถูกต้อง'),
-  password: z.string().min(8, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'), // แนะนำให้เป็น 8 ตาม Config ของคุณ
+  password: z.string().min(8, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'รหัสผ่านไม่ตรงกัน',
@@ -26,7 +25,6 @@ type FormData = z.infer<typeof schema>;
 
 export default function Register() {
   const navigate = useNavigate();
-  const { setSession } = useAuthStore();
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -53,11 +51,9 @@ export default function Register() {
       });
       return { isSignUpComplete, userId, nextStep };
     },
-    onSuccess: (result) => {
-      toast.success('สมัครสมาชิกสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อรับรหัสยืนยัน 6 หลัก');
-      
-      // แก้ไขจาก /login เป็น /confirm-registration
-      // เพื่อให้ผู้ใช้สามารถกรอกรหัส 014888 ที่ได้รับทางอีเมลได้ทันที
+    onSuccess: () => {
+      toast.success('สมัครสมาชิกสำเร็จ! กำลังพาคุณไปหน้ายืนยันรหัส');
+      // สั่งให้ไปหน้ายืนยันรหัส เพื่อกรอก Code 6 หลักจาก Email
       navigate('/confirm-registration'); 
     },
     onError: (error: any) => {
@@ -66,9 +62,7 @@ export default function Register() {
       if (error.name === 'UsernameExistsException') {
         message = 'อีเมลนี้ถูกใช้งานไปแล้ว';
       } else if (error.name === 'InvalidPasswordException') {
-        message = 'รหัสผ่านไม่ตรงตามเงื่อนไขความปลอดภัย (ต้องมีพิมพ์ใหญ่ พิมพ์เล็ก ตัวเลข และสัญลักษณ์)';
-      } else {
-        message = error.message || message;
+        message = 'รหัสผ่านต้องมีพิมพ์ใหญ่ พิมพ์เล็ก ตัวเลข และสัญลักษณ์';
       }
       toast.error(message);
     },
@@ -98,11 +92,7 @@ export default function Register() {
                   <FormItem>
                     <FormLabel>ชื่อ</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="ชื่อของคุณ"
-                        className="border-2 border-primary"
-                      />
+                      <Input {...field} placeholder="ชื่อของคุณ" className="border-2 border-primary" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -116,12 +106,7 @@ export default function Register() {
                   <FormItem>
                     <FormLabel>อีเมล</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        type="email"
-                        placeholder="your@email.com"
-                        className="border-2 border-primary"
-                      />
+                      <Input {...field} type="email" placeholder="your@email.com" className="border-2 border-primary" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -135,12 +120,7 @@ export default function Register() {
                   <FormItem>
                     <FormLabel>รหัสผ่าน</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        type="password"
-                        placeholder="••••••••"
-                        className="border-2 border-primary"
-                      />
+                      <Input {...field} type="password" placeholder="••••••••" className="border-2 border-primary" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -152,4 +132,35 @@ export default function Register() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>ยืนยันรหัสผ่าน
+                    <FormLabel>ยืนยันรหัสผ่าน</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="password" placeholder="••••••••" className="border-2 border-primary" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button
+                type="submit"
+                className="w-full border-2 border-primary"
+                disabled={registerMutation.isPending}
+              >
+                {registerMutation.isPending ? 'กำลังสมัคร...' : 'สมัครสมาชิก'}
+              </Button>
+            </form>
+          </Form>
+
+          <div className="mt-6 text-center text-sm">
+            <p className="text-muted-foreground">
+              มีบัญชีแล้ว?{' '}
+              <Link to="/login" className="font-medium underline">
+                เข้าสู่ระบบ
+              </Link>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
