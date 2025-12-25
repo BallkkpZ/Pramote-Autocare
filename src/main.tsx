@@ -10,13 +10,12 @@ import outputs from '../amplify_outputs.json';
 Amplify.configure({
   ...outputs,
   API: {
-    endpoints: [
-      {
-        name: "orderApi",
+    REST: {
+      orderApi: {
         endpoint: "https://82el04rnoi.execute-api.ap-southeast-1.amazonaws.com/dev",
         region: "ap-southeast-1"
       }
-    ]
+    }
   }
 });
 
