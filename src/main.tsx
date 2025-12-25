@@ -13,25 +13,22 @@ import '@aws-amplify/ui-react/styles.css';
 import outputs from '../amplify_outputs.json';
 import config from './amplifyconfiguration.json';
 
-// รวมการตั้งค่าเพื่อให้รองรับทั้ง Gen 1 และ Gen 2
+// รวมการตั้งค่าเพื่อให้รองรับทั้ง Gen 1 และ Gen 2 อย่างสมบูรณ์
 Amplify.configure({
   ...outputs,
   API: {
     ...outputs.data,
     REST: {
-      // ดึงค่าจาก config.aws_cloud_logic_custom มาลงทะเบียน
-      ...(config.aws_cloud_logic_custom || []).reduce((acc, api) => ({
-        ...acc,
-        [api.name]: {
-          endpoint: api.endpoint,
-          region: api.region
-        },
-        // เพิ่มชื่อมาตรฐาน 'api' เผื่อไว้ในระบบ Gen 2
-        api: {
-          endpoint: api.endpoint,
-          region: api.region
-        }
-      }), {})
+      // ลงทะเบียนชื่อ 'orderApi' ให้ตรงกับที่ไฟล์ Checkout.tsx เรียกใช้
+      orderApi: {
+        endpoint: "https://82el04rnoi.execute-api.ap-southeast-1.amazonaws.com/dev",
+        region: "ap-southeast-1"
+      },
+      // ลงทะเบียนชื่อมาตรฐาน 'api' เผื่อไว้สำหรับการเรียกใช้ในอนาคต
+      api: {
+        endpoint: "https://82el04rnoi.execute-api.ap-southeast-1.amazonaws.com/dev",
+        region: "ap-southeast-1"
+      }
     }
   }
 });
