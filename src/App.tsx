@@ -9,16 +9,6 @@ import { Footer } from '@/components/layout/Footer';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCartStore } from '@/stores/cart-store';
 
-// --- นำเข้าเครื่องมือสำหรับเรียกใช้ REST API ---
-import { post } from 'aws-amplify/api';
-// ------------------------------------------
-
-// --- ส่วนเดิมสำหรับ Data Gen 2 (ถ้ามี) ---
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../amplify/data/resource";
-const client = generateClient<Schema>();
-// ------------------------------------------
-
 // Pages
 import Home from './pages/Home';
 import Products from './pages/Products';
@@ -29,6 +19,7 @@ import OrderSuccess from './pages/OrderSuccess';
 import TrackOrder from './pages/TrackOrder';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ConfirmRegistration from './pages/ConfirmRegistration'; // เพิ่มการ Import หน้าเจ้งยืนยัน
 import Account from './pages/Account';
 import AccountOrders from './pages/AccountOrders';
 import AccountOrderDetail from './pages/AccountOrderDetail';
@@ -65,6 +56,8 @@ function AppContent() {
           
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          {/* เพิ่ม Route สำหรับหน้ายืนยันรหัส 6 หลัก */}
+          <Route path="/confirm-registration" element={<ConfirmRegistration />} />
           
           <Route path="/account" element={<Account />} />
           <Route path="/account/orders" element={<AccountOrders />} />

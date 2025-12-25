@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { signIn, signUp, signOut, getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
+import { signIn, signUp, signOut, getCurrentUser, fetchUserAttributes, confirmSignUp } from 'aws-amplify/auth';
 
 export interface User {
   id: string;
@@ -15,9 +15,10 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (email: string, password: string, name: string) => Promise<{ nextStep: string }>;
+  confirmRegister: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
-  initSession: () => Promise<void>; // เปลี่ยนชื่อจาก checkSession เป็น initSession ให้ตรงกับ App.tsx
+  initSession: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -31,7 +32,14 @@ export const useAuthStore = create<AuthState>()(
       login: async (email, password) => {
         set({ isLoading: true, error: null });
         try {
-          const { isSignedIn } = await signIn({ username: email, password });
+          const { isSignedIn, nextStep } = await signIn({ username: email, password });
+          
+          if (nextStep.signInStep === 'CONFIRM_SIGN_UP') {
+            const error = new Error('UserNotConfirmedException');
+            error.name = 'UserNotConfirmedException';
+            throw error;
+          }
+
           if (isSignedIn) {
             const user = await getCurrentUser();
             const attributes = await fetchUserAttributes();
@@ -56,15 +64,28 @@ export const useAuthStore = create<AuthState>()(
       register: async (email, password, name) => {
         set({ isLoading: true, error: null });
         try {
-          await signUp({
+          const { nextStep } = await signUp({
             username: email,
             password,
             options: {
               userAttributes: { email, name },
             },
           });
+          return { nextStep: nextStep.signUpStep };
         } catch (error: any) {
           set({ error: error.message || 'Registration failed' });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      confirmRegister: async (email, code) => {
+        set({ isLoading: true, error: null });
+        try {
+          await confirmSignUp({ username: email, confirmationCode: code });
+        } catch (error: any) {
+          set({ error: error.message || 'Confirmation failed' });
           throw error;
         } finally {
           set({ isLoading: false });

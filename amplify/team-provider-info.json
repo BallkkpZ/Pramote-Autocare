@@ -16,7 +16,7 @@
       "function": {
         "createOrderFunction": {
           "deploymentBucketName": "amplify-dev-dev-f16e0-deployment",
-          "s3Key": "amplify-builds/createOrderFunction-2b426a78526f334f7847-build.zip"
+          "s3Key": "amplify-builds/createOrderFunction-4c476a7a7167666c4334-build.zip"
         }
       },
       "auth": {
