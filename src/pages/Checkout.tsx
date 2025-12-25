@@ -54,11 +54,11 @@ export default function Checkout() {
       const serviceNames = items.map(item => item.name).join(', ');
       const totalAmount = getTotal();
 
-      // ดึง Token ล่าสุด
+      // 1. ดึง Auth Token ล่าสุด
       const { tokens } = await fetchAuthSession();
       const idToken = tokens?.idToken?.toString();
 
-      // เรียก API โดยระบุชื่อ ApiName ให้ตรงกับที่ตั้งไว้ (ปกติคือ orderApi)
+      // 2. เรียก API โดยใช้ชื่อ 'orderApi' ตามที่ปรากฏใน amplifyconfiguration.json
       const restOperation = post({
         apiName: 'orderApi',
         path: '/orders',
@@ -75,25 +75,34 @@ export default function Checkout() {
         }
       });
 
-      const response = await restOperation.response;
+      // 3. จัดการการตอบกลับ
+      const { body } = await restOperation.response;
+      const responseText = await body.text();
       
-      // ตรวจสอบสถานะการตอบกลับแบบละเอียด
-      if (response.statusCode !== 200) {
-        const errorJson = await response.body.json() as any;
-        throw new Error(errorJson.details || errorJson.error || 'Cloud Error');
+      try {
+        return JSON.parse(responseText);
+      } catch (e) {
+        // หาก Response ไม่ใช่ JSON ให้ส่งกลับเป็น Text หรือจำลอง Object
+        return { orderId: 'SUCCESS', message: responseText };
       }
-      
-      return await response.body.json();
     },
     onSuccess: (data: any) => {
       clearCart();
       toast.success('สั่งซื้อสำเร็จ!');
-      navigate(`/order-success?orderNumber=${data.orderId || 'SUCCESS'}`);
+      // นำ Order ID ที่ได้มาแสดง (หรือใช้ค่า SUCCESS หากไม่มีส่งกลับมา)
+      const orderNum = data.orderId || data.id || 'SUCCESS';
+      navigate(`/order-success?orderNumber=${orderNum}`);
     },
     onError: (error: any) => {
-      console.error('API Error Details:', error);
-      // แสดงข้อความ Error จริงจากระบบ Cloud เพื่อให้รู้ว่าติดขัดที่ส่วนไหน
-      toast.error(`ข้อผิดพลาด: ${error.message}`);
+      console.error('API Error Full Details:', error);
+      
+      // ตรวจสอบข้อความ Error เพื่อให้คำแนะนำที่ถูกต้อง
+      let errorMessage = error.message || 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้';
+      if (errorMessage.includes('apiName')) {
+        errorMessage = "ระบบหา API ไม่เจอ กรุณาตรวจสอบการตั้งค่าใน main.tsx";
+      }
+      
+      toast.error(`ข้อผิดพลาด: ${errorMessage}`);
     },
   });
 
@@ -190,8 +199,15 @@ export default function Checkout() {
               <Card className="border-2 border-primary sticky top-24">
                 <CardHeader><CardTitle>สรุปคำสั่งซื้อ</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex justify-between"><span>ยอดรวม</span><span>{formatPrice(getTotal())}</span></div>
-                  <Button type="submit" className="w-full" disabled={createOrderMutation.isPending}>
+                  <div className="flex justify-between font-bold text-lg">
+                    <span>ยอดรวมสุทธิ</span>
+                    <span>{formatPrice(getTotal())}</span>
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full text-lg h-12" 
+                    disabled={createOrderMutation.isPending}
+                  >
                     {createOrderMutation.isPending ? 'กำลังสั่งซื้อ...' : 'ยืนยันการสั่งซื้อ'}
                   </Button>
                 </CardContent>

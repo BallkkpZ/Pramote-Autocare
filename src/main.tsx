@@ -13,10 +13,21 @@ import '@aws-amplify/ui-react/styles.css';
 import outputs from '../amplify_outputs.json';
 import config from './amplifyconfiguration.json';
 
-// รวมการตั้งค่าทั้งหมดเข้าด้วยกันเพื่อให้แอปเรียกใช้งานได้ทุกส่วน
+// รวมการตั้งค่าทั้งหมดเข้าด้วยกัน
+// เราใช้การกระจายค่า (Spread) และระบุโครงสร้าง API REST ให้ชัดเจนตามมาตรฐาน Amplify Library
 Amplify.configure({
   ...outputs,
-  ...config
+  API: {
+    REST: {
+      ...config.aws_cloud_logic_custom.reduce((acc, api) => ({
+        ...acc,
+        [api.name]: {
+          endpoint: api.endpoint,
+          region: api.region
+        }
+      }), {})
+    }
+  }
 });
 
 const container = document.getElementById("root");
