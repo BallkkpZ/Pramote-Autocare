@@ -4,60 +4,83 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useAuthStore } from '@/stores/auth-store';
 import { toast } from 'sonner';
 
+// --- นำเข้า Auth จาก Amplify ---
+import { confirmSignUp, resendSignUpCode } from 'aws-amplify/auth';
+
 const schema = z.object({
-  code: z.string().length(6, 'รหัสยืนยันต้องมี 6 หลัก'),
+  email: z.string().email('กรุณากรอกอีเมลที่ถูกต้อง'),
+  code: z.string().min(6, 'รหัสต้องมี 6 หลัก'),
 });
+
+type FormData = z.infer<typeof schema>;
 
 export default function ConfirmRegistration() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { confirmRegister } = useAuthStore();
-  const email = location.state?.email; // ดึงอีเมลที่ส่งมาจากหน้า Login/Register
+  
+  // พยายามดึงอีเมลจากหน้าที่แล้วถ้ามี
+  const defaultEmail = location.state?.email || '';
 
-  const form = useForm({
+  const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { code: '' },
+    defaultValues: {
+      email: defaultEmail,
+      code: '',
+    },
   });
 
-  const onSubmit = async (data: { code: string }) => {
-    if (!email) {
-      toast.error('ไม่พบข้อมูลอีเมล กรุณาลองสมัครใหม่');
-      return;
-    }
+  const [loading, setLoading] = useState(false);
+
+  const onSubmit = async (data: FormData) => {
+    setLoading(true);
     try {
-      await confirmRegister(email, data.code);
-      toast.success('ยืนยันบัญชีสำเร็จ! กรุณาเข้าสู่ระบบ');
+      // สั่งยืนยันรหัสผ่าน Amplify Auth
+      await confirmSignUp({
+        username: data.email,
+        confirmationCode: data.code,
+      });
+      
+      toast.success('ยืนยันตัวตนสำเร็จ! กรุณาเข้าสู่ระบบ');
       navigate('/login');
     } catch (error: any) {
-      toast.error(error.message || 'รหัสยืนยันไม่ถูกต้อง');
+      console.error('Confirm error:', error);
+      toast.error(error.message || 'รหัสไม่ถูกต้อง หรืออีเมลไม่มีในระบบ');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <Card className="border-2 border-primary max-w-md mx-auto">
+    <div className="container mx-auto px-4 py-12 flex justify-center">
+      <Card className="w-full max-w-md border-2 border-primary">
         <CardHeader>
           <CardTitle className="text-2xl text-center">ยืนยันอีเมลของคุณ</CardTitle>
-          <p className="text-center text-sm text-muted-foreground">กรอกรหัส 6 หลักที่ส่งไปยัง {email}</p>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField control={form.control} name="code" render={({ field }) => (
+              <FormField control={form.control} name="email" render={({ field }) => (
                 <FormItem>
-                  <FormControl>
-                    <Input {...field} placeholder="000000" className="text-center text-2xl tracking-widest border-2 border-primary" />
-                  </FormControl>
+                  <FormLabel>อีเมลที่ใช้สมัคร</FormLabel>
+                  <FormControl><Input {...field} placeholder="your@email.com" className="border-2 border-primary" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
-              <Button type="submit" className="w-full border-2 border-primary">ยืนยันรหัส</Button>
+              <FormField control={form.control} name="code" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>กรอกรหัส 6 หลักที่ส่งไปยังอีเมล</FormLabel>
+                  <FormControl><Input {...field} placeholder="000000" className="border-2 border-primary" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'กำลังยืนยัน...' : 'ยืนยันรหัส'}
+              </Button>
             </form>
           </Form>
         </CardContent>
