@@ -8,8 +8,20 @@ import '@aws-amplify/ui-react/styles.css';
 import outputs from '../amplify_outputs.json';
 
 const amplifyConfig = {
-  ...outputs,
+  Auth: {
+    Cognito: {
+      userPoolId: outputs.auth.user_pool_id,
+      userPoolClientId: outputs.auth.user_pool_client_id,
+      identityPoolId: outputs.auth.identity_pool_id,
+      allowGuestAccess: outputs.auth.unauthenticated_identities_enabled,
+    }
+  },
   API: {
+    GraphQL: {
+      endpoint: outputs.data.url,
+      region: outputs.data.aws_region,
+      defaultAuthMode: 'userPool' as const,
+    },
     REST: {
       orderApi: {
         endpoint: "https://82el04rnoi.execute-api.ap-southeast-1.amazonaws.com/dev",
