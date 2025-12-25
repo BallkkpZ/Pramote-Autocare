@@ -1,6 +1,9 @@
-import { request, isUseMock } from './client';
+import { isUseMock } from './client';
 import { Order, Address, OrderStatus, TrackOrderRequest } from '@/types';
 import { MOCK_ORDERS } from '@/lib/mock-data';
+import { post, get } from 'aws-amplify/api';
+
+const API_NAME = 'orderApi';
 
 export async function createOrder(data: {
   shippingAddress: Address;
@@ -31,10 +34,16 @@ export async function createOrder(data: {
     return newOrder;
   }
 
-  return request<Order>('/checkout', {
-    method: 'POST',
-    body: JSON.stringify(data),
+  const operation = post({
+    apiName: API_NAME,
+    path: '/orders', // Assuming Checkout.tsx used this path initially, ensuring consistency
+    options: {
+      body: data
+    }
   });
+
+  const { body } = await operation.response;
+  return (await body.json()) as Order;
 }
 
 export async function getOrders(): Promise<Order[]> {
@@ -43,7 +52,13 @@ export async function getOrders(): Promise<Order[]> {
     return [...MOCK_ORDERS].reverse();
   }
 
-  return request<Order[]>('/orders');
+  const operation = get({
+    apiName: API_NAME,
+    path: '/orders'
+  });
+
+  const { body } = await operation.response;
+  return (await body.json()) as Order[];
 }
 
 export async function getOrderById(id: string): Promise<Order> {
@@ -57,7 +72,13 @@ export async function getOrderById(id: string): Promise<Order> {
     return order;
   }
 
-  return request<Order>(`/orders/${id}`);
+  const operation = get({
+    apiName: API_NAME,
+    path: `/orders/${id}`
+  });
+
+  const { body } = await operation.response;
+  return (await body.json()) as Order;
 }
 
 export async function trackOrder(data: TrackOrderRequest): Promise<Order> {
@@ -73,10 +94,16 @@ export async function trackOrder(data: TrackOrderRequest): Promise<Order> {
     return order;
   }
 
-  return request<Order>('/track-order', {
-    method: 'POST',
-    body: JSON.stringify(data),
+  const operation = post({
+    apiName: API_NAME,
+    path: '/track-order',
+    options: {
+      body: data
+    }
   });
+
+  const { body } = await operation.response;
+  return (await body.json()) as Order;
 }
 
 export async function updateOrderStatus(id: string, status: OrderStatus): Promise<Order> {
@@ -94,8 +121,14 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
     return order;
   }
 
-  return request<Order>(`/admin/orders/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status }),
+  const operation = post({ // Note: Using POST or PATCH depending on API design. AWS Gateway usually easy with POST or ANY. Keeping PATCH semantic if supported, but Amplify `patch` helper exists? Yes. Let's use `patch` to match original intent, but need to import it.
+    apiName: API_NAME,
+    path: `/admin/orders/${id}`,
+    options: {
+      body: { status }
+    }
   });
+
+  const { body } = await operation.response;
+  return (await body.json()) as Order;
 }
